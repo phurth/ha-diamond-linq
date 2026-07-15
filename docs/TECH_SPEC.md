@@ -1,6 +1,6 @@
 # Diamond Linq Water Softener — Technical Specification
 
-Technical reference for the `diamond_linq_softener` Home Assistant integration: the
+Technical reference for the `ha_diamond_linq` Home Assistant integration: the
 Bluetooth Low Energy protocol it speaks, the fields it decodes, the commands it
 sends, and how the integration is structured.
 
@@ -220,7 +220,7 @@ All values are clamped to the valve's accepted ranges before writing.
 ## 7. Integration Architecture
 
 ```
-custom_components/diamond_linq_softener/
+custom_components/ha_diamond_linq/
     __init__.py     Config-entry setup, DataUpdateCoordinator, options reload
     ble_client.py   Connection lifecycle, auth, frame requests, command writes
     parser.py       Frame decoding (tt / uu / vv, salt, usage graph, state bits)

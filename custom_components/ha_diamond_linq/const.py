@@ -1,4 +1,4 @@
-DOMAIN = "diamond_linq_softener"
+DOMAIN = "ha_diamond_linq"
 
 MANUFACTURER = "phurth"
 MODEL = "Diamond Linq Water Softener"
