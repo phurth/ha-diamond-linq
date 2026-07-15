@@ -38,6 +38,9 @@ SWITCHES: tuple[SoftenerSwitchDescription, ...] = (
         key="bypass",
         name="Bypass",
         icon="mdi:water-off",
+        # Physical control (raw, unsoftened water) — off by default to avoid
+        # accidental toggles from the dashboard.
+        entity_registry_enabled_default=False,
         value_fn=lambda d: d.bypass_active,
         set_fn=lambda c, on: c.async_set_bypass(on),
     ),
@@ -45,6 +48,8 @@ SWITCHES: tuple[SoftenerSwitchDescription, ...] = (
         key="shutoff",
         name="Water Shutoff",
         icon="mdi:water-pump-off",
+        # Physical control (shuts off household water) — off by default.
+        entity_registry_enabled_default=False,
         value_fn=lambda d: d.shutoff_active,
         set_fn=lambda c, on: c.async_set_shutoff(on),
     ),
