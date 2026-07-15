@@ -1,16 +1,12 @@
 """BLE client for Diamond Linq Water Softener.
 
-Handles BLE connection, notification subscription, and command sending
-using Home Assistant's bluetooth integration and bleak-retry-connector.
+Handles BLE connection, notification subscription, authentication, and command
+sending using Home Assistant's bluetooth integration and bleak-retry-connector.
 
-Authentication model (see docs/hacs_viability_report.md):
-- The GATT link is unencrypted and unbonded — fully proxy-compatible.
-- On the wire the app writes a single "PA" frame: ``74 74 50 41`` followed by
-  16 random bytes; the device then sets bit 15 of the tt-frame status word.
-- The decompiled app (v3.0.2) never sends PA and streams telemetry ungated,
-  so it is unclear whether PA is actually required. The client therefore runs
-  a one-time NO-AUTH PROBE on the first connection to determine, empirically,
-  whether uu/vv data flows without authentication, then latches the answer.
+The GATT link is unencrypted and unbonded, so it works over ESPHome Bluetooth
+proxies. Authentication is a single "PA" frame (``74 74 50 41`` + 16 bytes that
+encode the access code); the valve then sets bit 15 of the tt-frame status word
+and begins streaming the uu/vv records. See docs/TECH_SPEC.md.
 """
 from __future__ import annotations
 
@@ -53,16 +49,15 @@ CMD_REQUEST_UU = bytes([0x75] * 20)  # usage / salt config
 CMD_REQUEST_VV = bytes([0x76] * 20)  # fixed config
 
 
-# CRC8 polynomials the device accepts: bytes with 4-5 set bits
-# (CsCrc8.buildAllowedPolynomials: countSetBits in [4, 5]).
+# CRC8 polynomials the valve accepts: bytes with 4-5 set bits.
 _ALLOWED_POLYS = [i for i in range(1, 256) if 4 <= bin(i).count("1") <= 5]
 
 
 class _Crc8:
-    """Stateful bit-serial CRC8, ported from CsCrc8.computeLegacy.
+    """Stateful bit-serial CRC8 used by the authentication cascade.
 
-    setOptions(poly, seed) initializes; each legacy(value) folds one byte into
-    the running seed (MSB-first) and returns/updates it.
+    The constructor sets the polynomial and initial seed; each legacy(value)
+    folds one byte into the running seed (MSB-first) and returns/updates it.
     """
 
     __slots__ = ("seed", "poly")
@@ -87,9 +82,9 @@ class _Crc8:
 
 
 def build_password_pa_frame(password: str, conn_counter: int) -> bytes:
-    """Build the authenticated 'PA' frame (CsDataBufferEvb019.getPasswordBuffer).
+    """Build the authenticated 'PA' frame.
 
-    Layout (20 bytes, verified byte-for-byte against captured frames)::
+    Layout (20 bytes)::
 
         74 74 50 41 <poly> <r1> <r2> <b7> <b8> <b9> <b10> <9 random bytes>
 
@@ -132,7 +127,6 @@ class SoftenerBleClient:
         self,
         hass: HomeAssistant,
         address: str,
-        auth_token: str = "",
         password: str = "1234",
     ) -> None:
         """Initialize the BLE client.
@@ -140,12 +134,10 @@ class SoftenerBleClient:
         Args:
             hass: Home Assistant instance.
             address: BLE MAC address of the softener.
-            auth_token: Unused; retained for config-entry compatibility.
-            password: Unused; the device link is not password-gated.
+            password: 4-digit access code used for authentication.
         """
         self._hass = hass
         self._address = address
-        self._auth_token = auth_token
         self._password = password
         self._client: Optional[BleakClient] = None
         self._parser = FrameParser()
@@ -515,7 +507,7 @@ class SoftenerBleClient:
         _LOGGER.info("Setting display to %s", "ON" if on else "OFF")
         return await self.async_write_command(cmd)
 
-    # -- Write commands (EVB019, verified against v6.13.1 CsDataBufferEvb019) --
+    # -- Write commands --
     # Frame = 20 bytes of the record tag (Dashboard 0x75, AdvancedSettings 0x76,
     # StatusAndHistory 0x77) with a command letter at [13] and values following.
 

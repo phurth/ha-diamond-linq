@@ -15,8 +15,6 @@ from .const import (
     MIN_SCAN_INTERVAL,
     MAX_SCAN_INTERVAL,
     CONF_SCAN_INTERVAL,
-    CONF_AUTH_TOKEN,
-    DEFAULT_AUTH_TOKEN,
     CONF_PASSWORD,
     DEFAULT_PASSWORD,
 )
@@ -118,14 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.info("Setting up Diamond Linq softener at %s", address)
 
-    # Get the auth token and password if configured
-    auth_token = entry.data.get(CONF_AUTH_TOKEN, DEFAULT_AUTH_TOKEN)
     password = entry.data.get(CONF_PASSWORD, DEFAULT_PASSWORD)
-    
-    if auth_token:
-        _LOGGER.info("Auth token configured (length=%d)", len(auth_token))
-    else:
-        _LOGGER.info("No auth token configured - will use password '%s' for PA auth", password)
 
     # Poll interval: user-configurable via options, clamped to sane bounds.
     scan_interval = entry.options.get(
@@ -135,8 +126,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     scan_interval = max(MIN_SCAN_INTERVAL, min(MAX_SCAN_INTERVAL, int(scan_interval)))
     _LOGGER.info("Poll interval: %ds", scan_interval)
 
-    # Create the BLE client with auth configuration
-    client = SoftenerBleClient(hass, address, auth_token=auth_token, password=password)
+    # Create the BLE client
+    client = SoftenerBleClient(hass, address, password=password)
 
     # Create the coordinator
     coordinator = SoftenerDataUpdateCoordinator(hass, client, address, scan_interval)

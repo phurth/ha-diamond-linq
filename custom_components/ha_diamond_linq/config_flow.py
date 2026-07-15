@@ -17,8 +17,6 @@ from homeassistant.data_entry_flow import FlowResult
 from .const import (
     DOMAIN,
     NAME,
-    CONF_AUTH_TOKEN,
-    DEFAULT_AUTH_TOKEN,
     CONF_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
@@ -64,15 +62,9 @@ class DiamondLinqConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if service_info.name:
                     device_name = f"{NAME} ({service_info.name})"
 
-            # Get auth token if provided (optional)
-            auth_token = user_input.get(CONF_AUTH_TOKEN, DEFAULT_AUTH_TOKEN)
-
             return self.async_create_entry(
                 title=device_name,
-                data={
-                    "address": address,
-                    CONF_AUTH_TOKEN: auth_token,
-                },
+                data={"address": address},
             )
 
         # Discover Diamond Linq softeners via Bluetooth
@@ -109,7 +101,6 @@ class DiamondLinqConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data_schema=vol.Schema(
                     {
                         vol.Required("address"): vol.In(device_options),
-                        vol.Optional(CONF_AUTH_TOKEN, default=""): str,
                     }
                 ),
                 errors=errors,
@@ -139,13 +130,9 @@ class DiamondLinqConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(address)
                 self._abort_if_unique_id_configured()
 
-                auth_token = user_input.get(CONF_AUTH_TOKEN, "")
                 return self.async_create_entry(
                     title=NAME,
-                    data={
-                        "address": address,
-                        CONF_AUTH_TOKEN: auth_token,
-                    },
+                    data={"address": address},
                 )
 
         return self.async_show_form(
@@ -153,7 +140,6 @@ class DiamondLinqConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required("address"): str,
-                    vol.Optional(CONF_AUTH_TOKEN, default=""): str,
                 }
             ),
             errors=errors,
@@ -187,22 +173,14 @@ class DiamondLinqConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Confirm Bluetooth discovery."""
         if user_input is not None:
-            auth_token = user_input.get(CONF_AUTH_TOKEN, "")
             return self.async_create_entry(
                 title=self.context.get("title_placeholders", {}).get("name", NAME),
-                data={
-                    "address": self.unique_id,
-                    CONF_AUTH_TOKEN: auth_token,
-                },
+                data={"address": self.unique_id},
             )
 
         return self.async_show_form(
             step_id="bluetooth_confirm",
-            data_schema=vol.Schema(
-                {
-                    vol.Optional(CONF_AUTH_TOKEN, default=""): str,
-                }
-            ),
+            data_schema=vol.Schema({}),
             description_placeholders={
                 "name": self.context.get("title_placeholders", {}).get("name", NAME),
             },

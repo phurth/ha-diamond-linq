@@ -5,9 +5,8 @@ Frame types (first two bytes = ASCII tag):
   uu (75 75): Dashboard        — live readings; subtype in byte 2
   vv (76 76): AdvancedSettings — configuration; subtype in byte 2
 
-Field offsets are taken from the official app v6.13.1
-(CsDashboardPacket.parsePacket1 and CsAdvancedSettingsPacket) and verified
-against captured frames. High/low pairs are big-endian: value = hi<<8 | lo.
+High/low byte pairs are big-endian: value = hi<<8 | lo. See docs/TECH_SPEC.md
+for the full field map.
 """
 from __future__ import annotations
 
@@ -22,16 +21,15 @@ FRAME_TT = bytes([0x74, 0x74])
 FRAME_UU = bytes([0x75, 0x75])
 FRAME_VV = bytes([0x76, 0x76])
 
-# Brine tank salt density by tank diameter (CsBrineTank.getTotalSaltPounds):
-# total lbs = fillHeight(in) * lbs-per-inch.
+# Brine tank salt density by tank diameter: total lbs = fill height(in) * lbs/in.
 _SALT_LBS_PER_INCH = {16: 8.1, 18: 10.4, 24: 18.6, 30: 29.55}
 
 
 def _battery_pct(raw_byte: int) -> int:
-    """Battery % from the dashboard ADC byte (CsDashboardPacket.getBatteryCapacity).
+    """Battery % from the dashboard ADC byte.
 
     Maps an ADC-derived voltage through a piecewise curve. AC-powered units
-    report a byte that resolves to 0 (the app then shows a no-battery icon).
+    report a byte that resolves to 0.
     """
     volts = (raw_byte & 0xFF) * 0.088
     if volts >= 9.5:
@@ -153,7 +151,7 @@ class FrameParser:
         return True
 
     def _parse_dashboard(self, raw: bytes) -> bool:
-        """uu subtype 0 — live dashboard (CsDashboardPacket.parsePacket1)."""
+        """uu subtype 0 — live dashboard readings."""
         try:
             self.data.flow_gpm = ((raw[7] << 8) | raw[8]) / 100.0
             self.data.soft_remaining_gal = (raw[9] << 8) | raw[10]
@@ -167,8 +165,8 @@ class FrameParser:
             if 1 <= hour <= 12:
                 self.data.regen_time = f"{hour}:00 {am_pm}"
             self.data.battery_pct = _battery_pct(raw[6])
-            # Valve state bits (parsePacket1, firmware >= 410): bit3=shutoff,
-            # bit4=bypass, bit5=displayOff (isBitSet = value & (1<<(bit-1))).
+            # Valve state bits in byte 18: bit3 = shutoff, bit4 = bypass,
+            # bit5 = display-off (bit N set when value & (1 << (N-1))).
             state = raw[18]
             self.data.shutoff_active = bool(state & 0x04)
             self.data.bypass_active = bool(state & 0x08)
@@ -186,12 +184,11 @@ class FrameParser:
             return False
 
     def _parse_salt_config(self, raw: bytes) -> bool:
-        """uu subtype 1 — brine tank / salt (CsDashboardPacket.updateBrineTankData).
+        """uu subtype 1 — brine tank / salt.
 
-        Salt remaining (lbs) = refillTime * 1.5 * regensRemaining (residential),
-        which matches the app's "Brine Tank Level". Total capacity =
-        fillHeight * lbs-per-inch for the configured tank diameter. regens byte
-        of 0xFF means the brine tank is not set up.
+        Salt remaining (lb) = refill_time * 1.5 * regens_remaining (residential).
+        Total capacity = fill_height * lbs-per-inch for the configured tank
+        diameter. A regens byte of 0xFF means the brine tank is not set up.
         """
         try:
             regens_remaining = raw[13]
@@ -206,14 +203,14 @@ class FrameParser:
             refill_time = raw[17]  # minutes
             lbs_per_inch = _SALT_LBS_PER_INCH.get(tank_width, 8.1)
             total_lbs = fill_height * lbs_per_inch
-            # absorbedSaltPerMinute (residential) = fillRate(0.5) * 3.0 = 1.5
+            # 1.5 lb of salt absorbed per minute of brine refill (residential).
             remaining_lbs = refill_time * 1.5 * regens_remaining
 
             self.data.regens_remaining = regens_remaining
             self.data.brine_tank_size = (
                 f'{tank_width}"' if tank_width in _SALT_LBS_PER_INCH else None
             )
-            self.data.salt_remaining_lbs = int(remaining_lbs + 0.5)  # Java Math.round
+            self.data.salt_remaining_lbs = int(remaining_lbs + 0.5)  # round half up
             self.data.salt_total_lbs = int(total_lbs + 0.5)
             self.data.salt_remaining_pct = (
                 min(100, math.ceil(remaining_lbs / total_lbs * 100)) if total_lbs else None
@@ -230,10 +227,10 @@ class FrameParser:
     # -- uu usage graph (Average Daily Use) ---------------------------------
 
     def _start_graph(self, raw: bytes) -> bool:
-        """uu subtype 2 — first graph chunk (CsDashboardPacket.parseGraph).
+        """uu subtype 2 — first usage-graph chunk.
 
         Days 0..16 come from bytes 3..19; the next 3 untagged frames carry the
-        rest (parseGraph offsets 17 / 37 / 57).
+        rest (day offsets 17 / 37 / 57).
         """
         self._graph = [0.0] * 62
         for i in range(3, min(20, len(raw))):
@@ -293,9 +290,9 @@ class FrameParser:
             except IndexError as e:
                 _LOGGER.warning("vv parse error: %s", e)
                 return False
-        # subtype 1 = regen cycle position times (positions[0..3] = vv[3..6],
-        # minutes = byte & 0x7F; high bit is a not-adjustable flag). Order
-        # confirmed against the app: Backwash / Brine Draw / Rapid Rinse / Refill.
+        # subtype 1 = regen cycle position times at bytes 3..6 (minutes =
+        # byte & 0x7F; the high bit is a not-adjustable flag). Order:
+        # Backwash / Brine Draw / Rapid Rinse / Brine Refill.
         if raw[2] == 0x01:
             try:
                 self.data.backwash_min = raw[3] & 0x7F
