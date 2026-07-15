@@ -1,0 +1,61 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Diamond Linq Water Softener",
+        "description": "Select your Diamond Linq water softener from the list of discovered devices.",
+        "data": {
+          "address": "Device",
+          "auth_token": "Authentication Token"
+        },
+        "data_description": {
+          "auth_token": "Optional: 32-character hex token from BLE trace. Leave empty to try without authentication."
+        }
+      },
+      "manual": {
+        "title": "Manual Configuration",
+        "description": "Enter the Bluetooth MAC address of your Diamond Linq water softener. You can find this in your phone's Bluetooth settings when paired with the softener.",
+        "data": {
+          "address": "Bluetooth MAC Address",
+          "auth_token": "Authentication Token"
+        },
+        "data_description": {
+          "address": "The MAC address in format XX:XX:XX:XX:XX:XX",
+          "auth_token": "Optional: 32-character hex token from BLE trace. Leave empty to try without authentication."
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Confirm Setup",
+        "description": "Do you want to set up {name}?",
+        "data": {
+          "auth_token": "Authentication Token"
+        },
+        "data_description": {
+          "auth_token": "Optional: 32-character hex token from BLE trace. Leave empty to try without authentication."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the softener. Please check the address and ensure the device is in range.",
+      "invalid_mac": "Invalid MAC address format. Use XX:XX:XX:XX:XX:XX format.",
+      "unknown": "An unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options",
+        "description": "Configure the Diamond Linq softener.",
+        "data": {
+          "scan_interval": "Poll interval (seconds)"
+        },
+        "data_description": {
+          "scan_interval": "How often to read the softener (2-3600s). Faster gives near-real-time flow but holds the single BLE slot continuously, so the phone app cannot connect while the integration is enabled."
+        }
+      }
+    }
+  }
+}

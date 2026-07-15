@@ -1,0 +1,18 @@
+{
+  "name": "Diamond Linq Water Softener",
+  "content_in_root": false,
+  "render_readme": true,
+  "homeassistant": "2024.1.0",
+  "domains": [
+    "diamond_linq_softener"
+  ],
+  "country": [
+    "US",
+    "CA",
+    "AU",
+    "GB",
+    "FR",
+    "DE",
+    "NL"
+  ]
+}

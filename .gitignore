@@ -1,0 +1,32 @@
+# Internal / dev-only — not shipped
+CLAUDE.md
+
+# Large / non-distributable artifacts
+docs/DIAMOND-LINQ_*decompiled/
+docs/*.tar.gz
+*.apk
+*.xapk
+
+# BLE captures
+docs/traces/
+*.cfa
+*.cfa.curf
+*.pcap
+*.btsnoop
+
+# Logs
+*.log
+*.log.*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Editor / OS
+.DS_Store
+*.swp
+.vscode/
+.idea/

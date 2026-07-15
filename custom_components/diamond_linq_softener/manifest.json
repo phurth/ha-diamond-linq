@@ -1,0 +1,28 @@
+{
+  "domain": "diamond_linq_softener",
+  "name": "Diamond Linq Water Softener",
+  "version": "0.9.1",
+  "documentation": "https://github.com/phurth/diamond_linq_softener",
+  "issue_tracker": "https://github.com/phurth/diamond_linq_softener/issues",
+  "requirements": [
+    "bleak>=0.22.0",
+    "bleak-retry-connector>=3.0.0"
+  ],
+  "dependencies": [
+    "bluetooth"
+  ],
+  "bluetooth": [
+    {
+      "local_name": "CS_Meter_Soft*"
+    },
+    {
+      "local_name": "CS_Metter_Soft*"
+    }
+  ],
+  "codeowners": [
+    "@phurth"
+  ],
+  "config_flow": true,
+  "iot_class": "local_polling",
+  "integration_type": "hub"
+}
