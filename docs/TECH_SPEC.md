@@ -224,14 +224,19 @@ custom_components/ha_diamond_linq/
     __init__.py     Config-entry setup, DataUpdateCoordinator, options reload
     ble_client.py   Connection lifecycle, auth, frame requests, command writes
     parser.py       Frame decoding (tt / uu / vv, salt, usage graph, state bits)
-    config_flow.py  Discovery + manual setup, options (poll interval)
+    config_flow.py  Discovery + manual setup, options (poll interval, Bluetooth adapter)
+    pinning.py      ha-ble-pinning import that tolerates an older copy loaded earlier in the run
     sensor.py / switch.py / button.py / number.py / select.py   Entity platforms
     const.py        UUIDs, defaults, device info
 ```
 
 - **`SoftenerBleClient`** owns the BLE connection via Home Assistant's Bluetooth
-  stack (`async_ble_device_from_address` + `bleak_retry_connector`), so it works
-  over local adapters and ESPHome proxies without adapter forcing. It authenticates,
+  stack (`async_ble_device_from_address` + `ha_ble_pinning.establish_connection_via`),
+  so it works over local adapters and ESPHome proxies. The options' Bluetooth
+  adapter (`adapter`: `automatic` or a scanner source; `adapter_fallback`, default
+  on) pins the connection to one adapter/proxy, with the other scanners that hear
+  the softener as a fallback tier; Automatic keeps Home Assistant's routing. The
+  path in use is exposed by the Bluetooth Path diagnostic sensor. It authenticates,
   requests `tt`/`uu`/`vv` records, and exposes command methods.
 - **`SoftenerDataUpdateCoordinator`** drives polling on the configured interval and
   applies the transient-miss grace period.

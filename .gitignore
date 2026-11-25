@@ -30,3 +30,4 @@ build/
 *.swp
 .vscode/
 .idea/
+CLAUDE.md.bak*

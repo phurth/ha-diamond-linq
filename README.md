@@ -33,6 +33,7 @@ Live readings refresh over a held-open Bluetooth connection (default every ~3 s,
 | Backwash / Brine Draw / Rapid Rinse / Brine Refill Time | min | Regen cycle step durations (diagnostic) |
 | Firmware Version | — | Valve firmware (diagnostic) |
 | Battery | % | Backup-battery level (diagnostic, disabled by default; hardwired units read 0) |
+| Bluetooth Path | — | The adapter or proxy the connection uses (diagnostic); attributes `source`, `adapter_choice`, `fallback` |
 
 ### Controls
 
@@ -53,8 +54,8 @@ Live readings refresh over a held-open Bluetooth connection (default every ~3 s,
 
 ## Requirements
 
-- Home Assistant 2024.1+ with the Bluetooth integration
-- Bluetooth coverage of the softener — either a local adapter on the Home Assistant host or an ESPHome Bluetooth proxy in range. Home Assistant routes automatically; no adapter is "forced."
+- Home Assistant 2025.2+ with the Bluetooth integration
+- Bluetooth coverage of the softener — either a local adapter on the Home Assistant host or an ESPHome Bluetooth proxy in range. Home Assistant routes automatically unless you choose an adapter (see [Bluetooth adapter](#bluetooth-adapter)).
 - The softener's 4-digit access code (factory default `1234`).
 
 ## Installation (HACS)
@@ -79,6 +80,15 @@ Live readings refresh over a held-open Bluetooth connection (default every ~3 s,
 Readings update over a **held-open** Bluetooth connection. The poll interval (how often the coordinator refreshes) is configurable (2–3600 s, default 3) via **Settings → Devices & Services → Diamond Linq Water Softener → Configure**.
 
 A short interval gives near-real-time flow but keeps the softener's single Bluetooth slot occupied. A longer interval frees the radio between reads so the Diamond Linq phone app can connect.
+
+### Bluetooth adapter
+
+The held-open connection also uses a connection slot on whichever Home Assistant adapter or proxy it goes through. Home Assistant picks that by signal strength and its own slot count, and with several devices holding connections it can put more on one adapter than that adapter can carry. The same **Configure** form lets you choose:
+
+- **Bluetooth: connect through:** *Automatic* (the default: Home Assistant decides) or one specific adapter or proxy. Adapters and proxies that hear the softener right now are listed first, strongest first, then the others.
+- **Bluetooth: use another adapter if this one is unavailable:** on by default. Another adapter is only used when the chosen one hasn't heard the softener recently or has no free slot.
+
+The **Bluetooth Path** sensor shows which one is in use. The choice is made with [ha-ble-pinning](https://github.com/phurth/ha-ble-pinning).
 
 ## Notes & Limitations
 

@@ -19,16 +19,19 @@ from typing import Optional
 from bleak import BleakClient, BleakError
 from bleak.backends.device import BLEDevice
 from bleak.backends.characteristic import BleakGATTCharacteristic
-from bleak_retry_connector import establish_connection, BleakNotFoundError
+from bleak_retry_connector import BleakNotFoundError
 
 from homeassistant.components.bluetooth import (
     async_ble_device_from_address,
+    async_scanner_by_source,
     async_scanner_count,
+    async_scanner_devices_by_address,
     async_discovered_service_info,
 )
 from homeassistant.core import HomeAssistant
 
 from .const import NUS_RX_UUID, NUS_TX_UUID
+from .pinning import AUTOMATIC, connection_path, establish_connection_via
 from .parser import DiamondLinqData, FrameParser
 
 _LOGGER = logging.getLogger(__name__)
@@ -128,6 +131,8 @@ class SoftenerBleClient:
         hass: HomeAssistant,
         address: str,
         password: str = "1234",
+        adapter: str = AUTOMATIC,
+        adapter_fallback: bool = True,
     ) -> None:
         """Initialize the BLE client.
 
@@ -140,6 +145,11 @@ class SoftenerBleClient:
         self._address = address
         self._password = password
         self._client: Optional[BleakClient] = None
+        # Bluetooth adapter choice (options) and the path actually in use.
+        self.adapter_choice = adapter
+        self.adapter_fallback = adapter_fallback
+        self.bluetooth_path: Optional[str] = None
+        self.bluetooth_path_source: Optional[str] = None
         self._parser = FrameParser()
         self._connected = False
         self._lock = asyncio.Lock()
@@ -166,6 +176,14 @@ class SoftenerBleClient:
     def is_connected(self) -> bool:
         """Return True if connected to the device."""
         return self._connected and self._client is not None and self._client.is_connected
+
+    def _note_bluetooth_path(self, client: BleakClient) -> None:
+        """Record which adapter or proxy the link actually uses."""
+        source = connection_path(client).source
+        scanner = async_scanner_by_source(self._hass, source) if source else None
+        self.bluetooth_path_source = source
+        self.bluetooth_path = (scanner.name if scanner else None) or source
+        _LOGGER.debug("Softener %s connected through %s", self._address, self.bluetooth_path)
 
     def _reset_connection_state(self) -> None:
         """Reset per-connection flags (not the sticky _auth_required)."""
@@ -263,14 +281,21 @@ class SoftenerBleClient:
                 def _disconnected_callback(client: BleakClient) -> None:
                     _LOGGER.info("Disconnected from %s", self._address)
                     self._reset_connection_state()
+                    self.bluetooth_path = None
+                    self.bluetooth_path_source = None
 
-                self._client = await establish_connection(
-                    BleakClient,
+                self._client = await establish_connection_via(
                     ble_device,
                     self._address,
+                    adapter=self.adapter_choice,
+                    allow_fallback=self.adapter_fallback,
+                    scanner_devices=async_scanner_devices_by_address(
+                        self._hass, self._address, connectable=True
+                    ),
                     disconnected_callback=_disconnected_callback,
                     max_attempts=3,
                 )
+                self._note_bluetooth_path(self._client)
                 self._reset_connection_state()
                 self._connected = True
                 self._frames_seen.clear()

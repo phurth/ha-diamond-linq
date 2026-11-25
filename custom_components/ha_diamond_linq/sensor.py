@@ -225,10 +225,11 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     coordinator: DataUpdateCoordinator[DiamondLinqData] = data["coordinator"]
 
-    entities: list[SoftenerSensor] = [
+    entities: list[SensorEntity] = [
         SoftenerSensor(coordinator, entry, description)
         for description in SENSORS
     ]
+    entities.append(SoftenerBluetoothPathSensor(coordinator, entry, data["client"]))
 
     async_add_entities(entities)
 
@@ -279,3 +280,44 @@ class SoftenerSensor(CoordinatorEntity[DataUpdateCoordinator[DiamondLinqData]], 
             and self.coordinator.data is not None
             and self.native_value is not None
         )
+
+
+class SoftenerBluetoothPathSensor(
+    CoordinatorEntity[DataUpdateCoordinator[DiamondLinqData]], SensorEntity
+):
+    """Diagnostic sensor: the Bluetooth adapter or proxy the connection uses.
+
+    Set in the integration's options (Configure → Connect through); Automatic
+    lets Home Assistant choose.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Bluetooth Path"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:bluetooth-connect"
+
+    def __init__(
+        self,
+        coordinator: DataUpdateCoordinator[DiamondLinqData],
+        entry: ConfigEntry,
+        client: Any,
+    ) -> None:
+        super().__init__(coordinator)
+        self._client = client
+        self._attr_unique_id = f"{entry.entry_id}_bluetooth_path"
+        self._attr_device_info = build_device_info(
+            entry.entry_id,
+            coordinator.data.firmware_version if coordinator.data else None,
+        )
+
+    @property
+    def native_value(self) -> str | None:
+        return self._client.bluetooth_path
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "source": self._client.bluetooth_path_source,
+            "adapter_choice": self._client.adapter_choice,
+            "fallback": self._client.adapter_fallback,
+        }

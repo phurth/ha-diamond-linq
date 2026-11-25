@@ -17,8 +17,11 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_PASSWORD,
     DEFAULT_PASSWORD,
+    CONF_ADAPTER,
+    CONF_ADAPTER_FALLBACK,
 )
 from .ble_client import SoftenerBleClient
+from .pinning import AUTOMATIC
 from .parser import DiamondLinqData
 
 PLATFORMS: list[Platform] = [
@@ -127,7 +130,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info("Poll interval: %ds", scan_interval)
 
     # Create the BLE client
-    client = SoftenerBleClient(hass, address, password=password)
+    client = SoftenerBleClient(
+        hass,
+        address,
+        password=password,
+        adapter=entry.options.get(CONF_ADAPTER, AUTOMATIC),
+        adapter_fallback=entry.options.get(CONF_ADAPTER_FALLBACK, True),
+    )
 
     # Create the coordinator
     coordinator = SoftenerDataUpdateCoordinator(hass, client, address, scan_interval)

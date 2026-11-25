@@ -38,10 +38,14 @@
         "title": "Options",
         "description": "Configure the Diamond Linq softener.",
         "data": {
-          "scan_interval": "Poll interval (seconds)"
+          "scan_interval": "Poll interval (seconds)",
+          "adapter": "Bluetooth: connect through",
+          "adapter_fallback": "Bluetooth: use another adapter if this one is unavailable"
         },
         "data_description": {
-          "scan_interval": "How often to read the softener (2-3600s). Faster gives near-real-time flow but holds the single BLE slot continuously, so the phone app cannot connect while the integration is enabled."
+          "scan_interval": "How often to read the softener (2-3600s). Faster gives near-real-time flow but holds the single BLE slot continuously, so the phone app cannot connect while the integration is enabled.",
+          "adapter": "Automatic lets Home Assistant choose. The softener keeps its connection open, so it uses a connection slot on whichever adapter or proxy it connects through; choose one to spread held connections out yourself. Adapters and proxies that hear the softener right now are listed first, strongest first. The Bluetooth Path sensor shows the one in use.",
+          "adapter_fallback": "Only used when the chosen adapter hasn't heard the softener recently or has no free slot."
         }
       }
     }

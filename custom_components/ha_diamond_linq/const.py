@@ -42,3 +42,8 @@ CONF_PASSWORD = "password"
 
 # Default 4-digit access code used for authentication.
 DEFAULT_PASSWORD = "1234"
+
+# Options: which Bluetooth adapter or proxy to connect through (ha-ble-pinning).
+# "automatic" leaves the choice to Home Assistant.
+CONF_ADAPTER = "adapter"
+CONF_ADAPTER_FALLBACK = "adapter_fallback"

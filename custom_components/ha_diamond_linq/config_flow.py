@@ -7,21 +7,33 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.components import bluetooth
 from homeassistant.components.bluetooth import (
     BluetoothServiceInfoBleak,
     async_discovered_service_info,
+    async_scanner_devices_by_address,
 )
 from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     DOMAIN,
     NAME,
+    CONF_ADAPTER,
+    CONF_ADAPTER_FALLBACK,
     CONF_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
     MAX_SCAN_INTERVAL,
 )
+
+from .pinning import AUTOMATIC, adapter_options
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -237,6 +249,21 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             CONF_SCAN_INTERVAL,
             self._config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
         )
+        address = self._config_entry.data.get("address") or self._config_entry.unique_id
+        current_adapter = self._config_entry.options.get(CONF_ADAPTER, AUTOMATIC)
+        heard = (
+            async_scanner_devices_by_address(self.hass, address, connectable=True)
+            if address
+            else []
+        )
+        # A connected softener stops advertising, so also list every scanner
+        # Home Assistant knows, not only the ones hearing it right now.
+        current_scanners = getattr(bluetooth, "async_current_scanners", None)
+        choices = adapter_options(
+            heard,
+            current_adapter,
+            scanners=current_scanners(self.hass) if current_scanners else (),
+        )
 
         return self.async_show_form(
             step_id="init",
@@ -248,6 +275,19 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         vol.Coerce(int),
                         vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL),
                     ),
+                    vol.Required(CONF_ADAPTER, default=current_adapter): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                SelectOptionDict(value=value, label=label)
+                                for value, label in choices.items()
+                            ],
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_ADAPTER_FALLBACK,
+                        default=self._config_entry.options.get(CONF_ADAPTER_FALLBACK, True),
+                    ): bool,
                 }
             ),
         )
